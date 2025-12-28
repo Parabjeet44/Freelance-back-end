@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               Int       @id @default(autoincrement())
+  name             String
+  email            String    @unique
+  password         String
+  role             Role
+  refreshToken     String?   @unique
+
+  // Relationships
+  projects         Project[] @relation("BuyerProjects")       // Buyer-created projects
+  assignedProjects Project[] @relation("SellerProject")       // Seller-assigned projects
+  bids             Bid[]                                     // Seller bids
+  deliverables     Deliverable[]                             // Deliverables submitted by this seller
+}
+
+model Project {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String
+  budgetMin   Int
+  budgetMax   Int
+  deadline    DateTime
+  status      Status    @default(PENDING)
+  
+  // Buyer Relation
+  buyer       User      @relation("BuyerProjects", fields: [buyerId], references: [id])
+  buyerId     Int
+
+  // Seller Relation (assigned after selection)
+  seller      User?     @relation("SellerProject", fields: [sellerId], references: [id])
+  sellerId    Int?
+
+  // Related Bids
+  bids        Bid[]
+
+  // Remove this:
+  // deliverable String?
+
+  // Optional Deliverable relation (one-to-one)
+  deliverable Deliverable?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Deliverable {
+  id          Int      @id @default(autoincrement())
+  project     Project  @relation(fields: [projectId], references: [id])
+  projectId   Int      @unique
+  seller      User     @relation(fields: [sellerId], references: [id])
+  sellerId    Int
+  fileUrl     String?
+  link        String?
+  uploadedAt  DateTime @default(now())
+}
+
+
+model Bid {
+  id             Int      @id @default(autoincrement())
+  
+  // Related Project
+  project        Project  @relation(fields: [projectId], references: [id])
+  projectId      Int
+
+  // Related Seller (user)
+  seller         User     @relation(fields: [sellerId], references: [id])
+  sellerId       Int
+
+  amount         Int
+  estimatedTime  String
+  message        String
+  createdAt      DateTime @default(now())
+}
+
+enum Role {
+  BUYER
+  SELLER
+}
+
+enum Status {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
