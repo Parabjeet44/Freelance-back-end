@@ -12,15 +12,16 @@ dotenv.config();
 
 const app = express();
 
-// Use the exact domain from your request headers
-const allowedOrigin = 'https://freelance-front-end-production-0494.up.railway.app';
+// 1. Get origin from Environment Variable
+const FRONT_END_URL = process.env.FRONT_END_URL;
 
 const corsOptions = {
     origin: (origin: string | undefined, callback: any) => {
-        // Allow requests with no origin or matching origin
-        if (!origin || origin === allowedOrigin) {
+        // Allow if no origin (server-to-server) or if it matches our ENV variable
+        if (!origin || origin === FRONT_END_URL) {
             callback(null, true);
         } else {
+            console.error(`CORS Blocked: ${origin} does not match ${FRONT_END_URL}`);
             callback(null, false);
         }
     },
@@ -30,27 +31,22 @@ const corsOptions = {
     optionsSuccessStatus: 200
 };
 
-// 1. Apply CORS globally
+// 2. Middleware setup
 app.use(cors(corsOptions));
+app.use(cookieParser());
+app.use(express.json());
 
-// 2. Middleware to ensure headers are set on every single response
+// 3. Manual Preflight check for Express 5 compatibility
 app.use((req: Request, res: Response, next: NextFunction) => {
-    res.header('Access-Control-Allow-Origin', allowedOrigin);
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.header('Access-Control-Allow-Credentials', 'true');
-
-    // If it's a preflight, stop here and send 200
     if (req.method === 'OPTIONS') {
+        res.header('Access-Control-Allow-Origin', FRONT_END_URL);
+        res.header('Access-Control-Allow-Credentials', 'true');
         return res.sendStatus(200);
     }
     next();
 });
 
-app.use(cookieParser());
-app.use(express.json());
-
-// Routes
+// 4. Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/project', projectRoutes);
 app.use('/api/bid', bidRoutes);
@@ -61,4 +57,5 @@ app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+    console.log(`CORS Configured for: ${FRONT_END_URL}`);
 });
