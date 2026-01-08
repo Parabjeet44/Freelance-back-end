@@ -12,30 +12,28 @@ dotenv.config();
 
 const app = express();
 
-// 1. Define allowed origins (Handle both with and without trailing slash)
-const allowedOrigin = process.env.FRONT_END_URL;
+const allowedOrigin = process.env.FRONT_END_URL || 'https://freelance-front-end-production-0494.up.railway.app';
 
 const corsOptions = {
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-        // Allow requests with no origin (like mobile apps or curl) 
-        // or check if the origin matches our allowed domain
+        // Allow requests with no origin (like mobile apps) or matching origin
         if (!origin || origin === allowedOrigin || origin === `${allowedOrigin}/`) {
             callback(null, true);
         } else {
-            callback(new Error('Not allowed by CORS'));
+            callback(null, false); // Don't throw error, just disallow
         }
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
-    optionsSuccessStatus: 200 // Some legacy browsers (IE11, various SmartTVs) choke on 204
+    optionsSuccessStatus: 200 
 };
 
-// 2. Apply CORS middleware
+// 1. Apply CORS to all requests
 app.use(cors(corsOptions));
 
-// 3. Explicitly handle Preflight requests for all routes
-app.options('*', cors(corsOptions));
+// 2. Fix the crash: Use a regex for the global OPTIONS handler in Express 5
+app.options('(.*)', cors(corsOptions));
 
 app.use(cookieParser());
 app.use(express.json());
@@ -49,6 +47,7 @@ app.use('/api/project', projectRoutes);
 app.use('/api/bid', bidRoutes);
 app.use('/api/deliverable', deliverableRoute);
 
+// Use Railway's dynamic PORT
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
