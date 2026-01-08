@@ -1,4 +1,4 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express from 'express';
 import authRoutes from './routes/authRoute';
 import projectRoutes from './routes/projectRoutes';
 import bidRoutes from './routes/bidRoutes';
@@ -12,41 +12,21 @@ dotenv.config();
 
 const app = express();
 
-// 1. Get origin from Environment Variable
-const FRONT_END_URL = process.env.FRONT_END_URL;
-
-const corsOptions = {
-    origin: (origin: string | undefined, callback: any) => {
-        // Allow if no origin (server-to-server) or if it matches our ENV variable
-        if (!origin || origin === FRONT_END_URL) {
-            callback(null, true);
-        } else {
-            console.error(`CORS Blocked: ${origin} does not match ${FRONT_END_URL}`);
-            callback(null, false);
-        }
-    },
+// 1. CORS Configuration
+app.use(cors({
+    origin: process.env.FRONT_END_URL,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    optionsSuccessStatus: 200
-};
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
-// 2. Middleware setup
-app.use(cors(corsOptions));
+// 2. Simple Preflight Handler (Fixes Express 5 crash)
+app.options('/:path*', cors());
+
 app.use(cookieParser());
 app.use(express.json());
 
-// 3. Manual Preflight check for Express 5 compatibility
-app.use((req: Request, res: Response, next: NextFunction) => {
-    if (req.method === 'OPTIONS') {
-        res.header('Access-Control-Allow-Origin', FRONT_END_URL);
-        res.header('Access-Control-Allow-Credentials', 'true');
-        return res.sendStatus(200);
-    }
-    next();
-});
-
-// 4. Routes
+// 3. Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/project', projectRoutes);
 app.use('/api/bid', bidRoutes);
@@ -54,8 +34,8 @@ app.use('/api/deliverable', deliverableRoute);
 
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
+// 4. Start Server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`CORS Configured for: ${FRONT_END_URL}`);
+    console.log(`Server is running on port ${PORT}`);
 });
