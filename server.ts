@@ -12,15 +12,18 @@ dotenv.config();
 
 const app = express();
 
+// Use the exact URL from your Railway frontend
 const allowedOrigin = process.env.FRONT_END_URL || 'https://freelance-front-end-production-0494.up.railway.app';
 
 const corsOptions = {
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-        // Allow requests with no origin (like mobile apps) or matching origin
+        // Log for debugging - you can see this in Railway logs
+        console.log('Incoming Request Origin:', origin);
+        
         if (!origin || origin === allowedOrigin || origin === `${allowedOrigin}/`) {
             callback(null, true);
         } else {
-            callback(null, false); // Don't throw error, just disallow
+            callback(null, false);
         }
     },
     credentials: true,
@@ -29,11 +32,11 @@ const corsOptions = {
     optionsSuccessStatus: 200 
 };
 
-// 1. Apply CORS to all requests
+// 1. Apply CORS middleware
 app.use(cors(corsOptions));
 
-// 2. Fix the crash: Use a regex for the global OPTIONS handler in Express 5
-app.options('(.*)', cors(corsOptions));
+// 2. FIXED: Catch-all OPTIONS handler using Express 5 syntax
+app.options('/:path*', cors(corsOptions));
 
 app.use(cookieParser());
 app.use(express.json());
