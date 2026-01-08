@@ -12,7 +12,8 @@ dotenv.config();
 
 const app = express();
 
-// 1. Standard CORS middleware
+// 1. Setup CORS
+// By putting this at the top, it automatically handles OPTIONS for all routes
 app.use(cors({
     origin: process.env.FRONT_END_URL,
     credentials: true,
@@ -20,13 +21,11 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// 2. The Fix: Use a Regex to catch all OPTIONS requests
-// This avoids the "PathError" in Express 5
-app.options(/.* subterranean/, cors()); 
-app.options(/^.*$/, cors()); 
-
 app.use(cookieParser());
 app.use(express.json());
+
+// 2. Static Files
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // 3. Routes
 app.use('/api/auth', authRoutes);
@@ -34,9 +33,9 @@ app.use('/api/project', projectRoutes);
 app.use('/api/bid', bidRoutes);
 app.use('/api/deliverable', deliverableRoute);
 
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
-
+// 4. Railway Port Binding
+// Using '0.0.0.0' ensures Railway can see the application
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+app.listen(Number(PORT), '0.0.0.0', () => {
     console.log(`Server is running on port ${PORT}`);
 });
