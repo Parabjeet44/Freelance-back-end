@@ -12,7 +12,7 @@ dotenv.config();
 
 const app = express();
 
-// 1. CORS Configuration
+// 1. Standard CORS middleware
 app.use(cors({
     origin: process.env.FRONT_END_URL,
     credentials: true,
@@ -20,8 +20,10 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// 2. Simple Preflight Handler (Fixes Express 5 crash)
-app.options('/:path*', cors());
+// 2. The Fix: Use a Regex to catch all OPTIONS requests
+// This avoids the "PathError" in Express 5
+app.options(/.* subterranean/, cors()); 
+app.options(/^.*$/, cors()); 
 
 app.use(cookieParser());
 app.use(express.json());
@@ -34,7 +36,6 @@ app.use('/api/deliverable', deliverableRoute);
 
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
-// 4. Start Server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
