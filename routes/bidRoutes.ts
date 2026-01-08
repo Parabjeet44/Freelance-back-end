@@ -79,32 +79,45 @@ router.get('/bids/mine', checkToken, authorizeRole('SELLER'), async (req: Reques
 });
 
 
+
 router.get('/projects/:id/bids', checkToken, authorizeRole('BUYER'), checkProjectOwnership, async (req: any, res: Response): Promise<any> => {
     const { id } = req.params;
+    
     if (!id) {
         return res.status(400).json({ message: 'Project ID is required' });
     }
+
     try {
-        const Bid = await prisma.bid.findMany({
+        const bids = await prisma.bid.findMany({
             where: {
                 projectId: Number(id)
+            },
+            include: {
+                seller: {
+                    select: {
+                        name: true // Only fetch the name, not the password/email
+                    }
+                }
             }
-        })
+        });
+
         res.status(200).json({
             message: 'Bids fetched successfully',
-            bids: Bid.map((bid) => ({
+            bids: bids.map((bid) => ({
                 id: bid.id,
                 projectId: bid.projectId,
                 sellerId: bid.sellerId,
+                sellerName: bid.seller.name, // Now included!
                 amount: bid.amount,
                 estimatedTime: bid.estimatedTime,
                 message: bid.message
             }))
-        })
-    } catch {
+        });
+    } catch (error) {
+        console.error('Error fetching bids:', error);
         return res.status(500).json({ message: 'Internal server error' });
     }
-})
+});
 
 router.get('/projects/:id/hasBid', checkToken, authorizeRole('SELLER'), async (req: any, res: Response): Promise<any> => {
     const { id } = req.params;
