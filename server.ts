@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import authRoutes from './routes/authRoute';
 import projectRoutes from './routes/projectRoutes';
 import bidRoutes from './routes/bidRoutes';
@@ -12,13 +12,12 @@ dotenv.config();
 
 const app = express();
 
-// Use the exact URL from your Railway frontend
-const allowedOrigin = process.env.FRONT_END_URL || 'https://freelance-front-end-production-0494.up.railway.app';
+const allowedOrigin = process.env.FRONT_END_URL;
 
 const corsOptions = {
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-        // Log for debugging - you can see this in Railway logs
-        console.log('Incoming Request Origin:', origin);
+        // Log the origin so you can see it in Railway logs
+        console.log('Request coming from origin:', origin);
         
         if (!origin || origin === allowedOrigin || origin === `${allowedOrigin}/`) {
             callback(null, true);
@@ -32,27 +31,33 @@ const corsOptions = {
     optionsSuccessStatus: 200 
 };
 
-// 1. Apply CORS middleware
+// 1. Apply CORS globally
 app.use(cors(corsOptions));
 
-// 2. FIXED: Catch-all OPTIONS handler using Express 5 syntax
-app.options('/:path*', cors(corsOptions));
+// 2. MANUAL PREFLIGHT HANDLER (Replaces app.options and avoids the crash)
+app.use((req: Request, res: Response, next: NextFunction) => {
+    if (req.method === 'OPTIONS') {
+        res.header('Access-Control-Allow-Origin', allowedOrigin);
+        res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+        res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        res.header('Access-Control-Allow-Credentials', 'true');
+        return res.sendStatus(200);
+    }
+    next();
+});
 
 app.use(cookieParser());
 app.use(express.json());
 
-// Static files
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
-// Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/project', projectRoutes);
 app.use('/api/bid', bidRoutes);
 app.use('/api/deliverable', deliverableRoute);
 
-// Use Railway's dynamic PORT
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
-    console.log(`CORS allowed origin: ${allowedOrigin}`);
+    console.log(`Targeting frontend: ${allowedOrigin}`);
 });
