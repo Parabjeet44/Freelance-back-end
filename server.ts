@@ -7,6 +7,7 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 
 dotenv.config();
 
@@ -35,6 +36,16 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(cookieParser());
 app.use(express.json());
+const uploadsDir = path.join(__dirname, '../uploads');
+const bidVideosDir = path.join(__dirname, '../uploads/bid-videos');
+
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+if (!fs.existsSync(bidVideosDir)) {
+    fs.mkdirSync(bidVideosDir, { recursive: true });
+}
 
 // 3. Manual Preflight check for Express 5 compatibility
 app.use((req: Request, res: Response, next: NextFunction) => {

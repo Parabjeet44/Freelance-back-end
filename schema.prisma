@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url= env("DATABASE_URL")
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -13,13 +13,14 @@ model User {
   email            String    @unique
   password         String
   role             Role
+  mobile           String?   // NEW: Mobile number field
   refreshToken     String?   @unique
 
   // Relationships
-  projects         Project[] @relation("BuyerProjects")       // Buyer-created projects
-  assignedProjects Project[] @relation("SellerProject")       // Seller-assigned projects
-  bids             Bid[]                                     // Seller bids
-  deliverables     Deliverable[]                             // Deliverables submitted by this seller
+  projects         Project[] @relation("BuyerProjects")
+  assignedProjects Project[] @relation("SellerProject")
+  bids             Bid[]
+  deliverables     Deliverable[]
 }
 
 model Project {
@@ -31,21 +32,13 @@ model Project {
   deadline    DateTime
   status      Status    @default(PENDING)
   
-  // Buyer Relation
   buyer       User      @relation("BuyerProjects", fields: [buyerId], references: [id])
   buyerId     Int
 
-  // Seller Relation (assigned after selection)
   seller      User?     @relation("SellerProject", fields: [sellerId], references: [id])
   sellerId    Int?
 
-  // Related Bids
   bids        Bid[]
-
-  // Remove this:
-  // deliverable String?
-
-  // Optional Deliverable relation (one-to-one)
   deliverable Deliverable?
 
   createdAt   DateTime  @default(now())
@@ -58,23 +51,25 @@ model Deliverable {
   projectId   Int      @unique
   seller      User     @relation(fields: [sellerId], references: [id])
   sellerId    Int
-  fileUrl     String?
-  link        String?
+  
+  // Separate fields for each file type
+  pdfUrl      String?   // PDF file
+  zipUrl      String?   // ZIP file
+  videoUrl    String?   // Video file
+  
+  // External links
+  pdfLink     String?   // External PDF link
+  zipLink     String?   // External ZIP link
+  videoLink   String?   // External video link
+  
   uploadedAt  DateTime @default(now())
 }
-
-
 model Bid {
   id             Int      @id @default(autoincrement())
-  
-  // Related Project
   project        Project  @relation(fields: [projectId], references: [id])
   projectId      Int
-
-  // Related Seller (user)
   seller         User     @relation(fields: [sellerId], references: [id])
   sellerId       Int
-
   amount         Int
   estimatedTime  String
   message        String

@@ -6,18 +6,44 @@ import upload from '../middleware/upload';
 
 const router = Router();
 
+// Updated to handle three separate files
 router.post('/projects/:id/deliverables',
     checkToken,
     authorizeRole('SELLER'),
-    upload.single('file'),
+    upload.fields([
+        { name: 'pdf', maxCount: 1 },      // PDF file
+        { name: 'zip', maxCount: 1 },      // ZIP file
+        { name: 'video', maxCount: 1 }     // Video file
+    ]),
     async (req: Request, res: Response): Promise<any> => {
         const projectId = parseInt(req.params.id);
         const sellerId = (req as any).user.id;
-        const { link } = req.body;
-        const fileUrl = (req as any).file ? `/uploads/${(req as any).file.filename}` : null;
+        const { pdfLink, zipLink, videoLink } = req.body;
+        
+        let pdfUrl = null;
+        let zipUrl = null;
+        let videoUrl = null;
 
-        if (!fileUrl && !link) {
-            return res.status(400).json({ error: 'Please upload a file or provide a link.' });
+        const files = (req as any).files;
+
+        // Handle PDF file
+        if (files?.pdf && files.pdf[0]) {
+            pdfUrl = `/uploads/${files.pdf[0].filename}`;
+        }
+
+        // Handle ZIP file
+        if (files?.zip && files.zip[0]) {
+            zipUrl = `/uploads/${files.zip[0].filename}`;
+        }
+
+        // Handle Video file
+        if (files?.video && files.video[0]) {
+            videoUrl = `/uploads/${files.video[0].filename}`;
+        }
+
+        // Check if at least one file or link is provided
+        if (!pdfUrl && !zipUrl && !videoUrl && !pdfLink && !zipLink && !videoLink) {
+            return res.status(400).json({ error: 'Please upload at least one file or provide a link.' });
         }
 
         try {
@@ -35,8 +61,12 @@ router.post('/projects/:id/deliverables',
                 data: {
                     projectId,
                     sellerId,
-                    fileUrl,
-                    link
+                    pdfUrl,
+                    zipUrl,
+                    videoUrl,
+                    pdfLink: pdfLink || null,
+                    zipLink: zipLink || null,
+                    videoLink: videoLink || null
                 }
             });
 
@@ -45,39 +75,47 @@ router.post('/projects/:id/deliverables',
             console.error(err);
             res.status(500).json({ error: 'Something went wrong.' });
         }
-    })
-router.get('/projects/:id/deliverables', checkToken, authorizeRole('BUYER'), checkProjectOwnership, async (req: Request, res: Response): Promise<any> => {
-    const projectId = parseInt(req.params.id);
+    }
+);
 
-    try {
-        const deliverable = await prisma.deliverable.findFirst({
-            where: { projectId },
-            select: {
-                id: true,
-                fileUrl: true,
-                link: true,
-                seller: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true
+router.get('/projects/:id/deliverables', 
+    checkToken, 
+    authorizeRole('BUYER'), 
+    checkProjectOwnership, 
+    async (req: Request, res: Response): Promise<any> => {
+        const projectId = parseInt(req.params.id);
+
+        try {
+            const deliverable = await prisma.deliverable.findFirst({
+                where: { projectId },
+                select: {
+                    id: true,
+                    pdfUrl: true,
+                    zipUrl: true,
+                    videoUrl: true,
+                    pdfLink: true,
+                    zipLink: true,
+                    videoLink: true,
+                    seller: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true
+                        }
                     }
                 }
+            });
+
+            if (!deliverable) {
+                return res.status(404).json({ error: 'No deliverables found for this project.' });
             }
-        });
 
-        if (!deliverable) {
-            return res.status(404).json({ error: 'No deliverables found for this project.' });
+            return res.status(200).json({ deliverable });
+        } catch (err) {
+            console.error(err);
+            return res.status(500).json({ error: 'Failed to fetch deliverables.' });
         }
-
-        return res.status(200).json({ deliverable });
-    } catch (err) {
-        console.error(err);
-        return res.status(500).json({ error: 'Failed to fetch deliverables.' });
     }
-}
 );
 
 export default router;
-
-
